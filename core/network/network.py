@@ -75,45 +75,51 @@ class NeuralNetwork:
     def backward(self,
                  input: NDArray,
                  y_true: NDArray,
-                 learning_rate: float):
+                 learning_rate: float) -> float:
+        N_obs = input.shape[0]
         gradient_weights = [np.zeros(weight.shape) for weight in self.weights]
         gradient_biases = [np.zeros(bias.shape) for bias in self.biases]
         inputs, outputs = self.forward(input)
         derivative_error = self.d_loss(y_true, outputs[-1]) * self._layers[-1].d_activate(inputs[-1])   # Dimension (input_dim * n_neurons of Output Layer)
         gradient_biases[-1] = derivative_error.sum(axis=0)  # Dimension (1 * n_neurons of Output Layer)
-        gradient_weights[-1] = np.dot(derivative_error.T, outputs[-2]).T
+        gradient_weights[-1] = np.dot(derivative_error.T, outputs[-2]).T / N_obs
 
         for step in range(len(self._layers) - 2, -1, -1):
             derivative_error = np.dot(derivative_error, self.weights[step + 1].T) * self._layers[step].d_activate(inputs[step + 1])
             gradient_biases[step] = derivative_error.sum(axis=0)
-            gradient_weights[step] = np.dot(derivative_error.T, outputs[step]).T
+            gradient_weights[step] = np.dot(derivative_error.T, outputs[step]).T / N_obs
 
         for step in range(len(self._layers)):
             self.weights[step] -= learning_rate * gradient_weights[step]
             self.biases[step] -= learning_rate * gradient_biases[step]
+        return self.loss(y_true, outputs[-1])
 
     def fit(self,
             input: NDArray,
             y_true: NDArray,
             epochs: int,
-            learning_rate: float):
-        for epoch in range(1, epochs + 1):
-            self.backward(input, y_true, learning_rate)
+            learning_rate: float) -> List[float]:
+        history = []
+        for epoch in range(1, epochs + 1):   
+            history.append(self.backward(input, y_true, learning_rate))
             if epoch % 10 == 0:
                 score = self.score(input, y_true)
                 logger.info(f"Epoch {epoch} finished with score {score}")
+        return history
+
+    def predict(self,
+                input: NDArray) -> NDArray:
+        return self.forward(input)[1][-1]
 
     def score(self,
               input: NDArray,
               y_true: NDArray) -> float:
         if not self._is_built:
             raise RuntimeError("The model must be built before calling 'forward(input)', please call 'build()' first.")
-        y_pred = self.forward(input)[1][-1]
+        y_pred = self.predict(input)
         if y_pred.shape != y_true.shape:
             raise ValueError(f"Shape mismatch between y_pred {y_pred.shape} and y_true {y_true.shape}.")
 
         return self.loss(y_true, y_pred)
 
-    def predict(self,
-                input: NDArray) -> NDArray:
-        return self.forward(input)[1][-1]
+

@@ -7,7 +7,7 @@ def MSE(y_true: NDArray,
 
 def D_MSE(y_true: NDArray,
         y_pred: NDArray) -> NDArray:
-    return - (y_true - y_pred)
+    return - (y_true - y_pred) / y_true.shape[0]
 
 def RMSE(y_true: NDArray,
         y_pred: NDArray) -> float:
