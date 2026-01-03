@@ -100,7 +100,8 @@ class NeuralNetwork:
             y: NDArray,
             epochs: int,
             learning_rate: float,
-            batch_size: int = -1) -> List[float]:
+            batch_size: int = -1,
+            verbose: bool = True) -> List[float]:
         if (batch_size > X.shape[0] or batch_size <= 0) and batch_size != -1:
             raise ValueError("'batch_size' should be a positive integer smaller than or equal to the number of input observations, or equal to -1.")
         history = []
@@ -115,7 +116,8 @@ class NeuralNetwork:
             history.append(self.loss(y, self.predict(X)))
             if epoch % 10 == 0:
                 score = self.score(X, y)
-                logger.info(f"Epoch {epoch} finished with score {score}")
+                if verbose:
+                    logger.info(f"Epoch {epoch} finished with score {score}")
         return history
 
     def predict(self,
