@@ -1,14 +1,16 @@
-from core.utilities.activation import ReLU, D_ReLU, sigmoid, D_sigmoid, identity, D_identity
+from core.utilities.activation import ReLU, D_ReLU, sigmoid, D_sigmoid, tanh, D_tanh, identity, D_identity
 
 # Type Hinting
 from numpy.typing import NDArray
 
 ACTIVATION_FUNCTIONS = {"RELU": ReLU,
                         "SIGMOID": sigmoid,
+                        "TANH": tanh,
                         "IDENTITY": identity}
 
 DERIVATIVE_ACTIVATION_FUNCTIONS = {"RELU": D_ReLU,
                         "SIGMOID": D_sigmoid,
+                        "TANH": D_tanh,
                         "IDENTITY": D_identity}
 
 class Layer:

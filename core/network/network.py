@@ -1,6 +1,6 @@
 import numpy as np
 from core.network.layer import Layer
-from core.utilities.loss import MSE, D_MSE, RMSE, MAE
+from core.utilities.loss import MSE, D_MSE, RMSE, MAE, binary_crossentropy, D_binary_crossentropy
 # Logging
 import logging
 # Type Hinting
@@ -10,9 +10,11 @@ from typing import List, Optional
 LOSS_FUNCTIONS = {"MSE": MSE,
                   "RMSE": RMSE,
                   "MAE": MAE,
+                  "BINARY_CROSSENTROPY": binary_crossentropy,
 }
 
 DERIVATIVE_LOSS_FUNCTIONS = {"MSE": D_MSE,
+                             "BINARY_CROSSENTROPY": D_binary_crossentropy,
 }
 
 logging.basicConfig(
