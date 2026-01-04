@@ -117,7 +117,7 @@ class NeuralNetwork:
             if epoch % 10 == 0:
                 score = self.score(X, y)
                 if verbose:
-                    logger.info(f"Epoch {epoch} finished with score {score}")
+                    logger.info(f"Epoch {epoch} finished with loss {score}")
         return history
 
     def predict(self,
