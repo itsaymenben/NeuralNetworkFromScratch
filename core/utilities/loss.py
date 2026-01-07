@@ -18,9 +18,13 @@ def MAE(y_true: NDArray,
     return np.mean(np.abs(y_true - y_pred)) # type: ignore
 
 def binary_crossentropy(y_true: NDArray,
-                        y_pred: NDArray) -> float:
+                        y_pred: NDArray,
+                        eps: float = 1e-8) -> float:
+    y_pred = np.clip(y_pred, eps, 1 - eps)
     return - np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)) # type: ignore
 
 def D_binary_crossentropy(y_true: NDArray,
-                          y_pred: NDArray) -> NDArray:
+                          y_pred: NDArray,
+                          eps: float = 1e-8) -> NDArray:
+    y_pred = np.clip(y_pred, eps, 1 - eps)
     return - (y_true / y_pred - (1 - y_true) / (1 - y_pred)) / y_true.shape[0]
