@@ -19,21 +19,25 @@ The results of the implementation are showcased using four classic problems:
 
 ## 1- Neural Network
 Before defining a neural network, it is necessary to define a [`Layer`](core/network/layer.py) object. It takes a number of neurons `n_neurons` and an activation function defined in the file [activation.py](core/utilities/activation.py).
-```
+
+```python
 layer = Layer(n_neurons=10, activation="ReLU")
 ```
+
 The neural network is defined by a class [`NeuralNetwork`](core/network/network.py) that takes as input a list of objects `Layer` and the dimension of the input.
-```
+
+```python
 network = NeuralNetwork(input_dim=X.shape[1],
                         layers=[Layer(n_neurons=1, activation="identity")])
 ```
 
 Alternatively, it is possible to define an empty `NeuralNetwork` object and then adding each layer using the `add_layer()` method.
 
-```
+```python
 network = NeuralNetwork(input_dim=X.shape[1])
 network.add_layer(Layer(n_neurons=1, activation="identity"))
 ```
+
 Before fitting the model, it is important to call the build method, this method initiates the weights matrix and bias vector for each layer.
 
 *NB: The last layer added to the `NeuralNetwork` object is automatically considered the output layer, and each layer before it a hidden layer.*
@@ -41,31 +45,73 @@ Before fitting the model, it is important to call the build method, this method 
 ## 2- Forward Propagation
 The `forward()` method on a [NeuralNetwork](core/network/network.py) object does a forward pass using the current weights and biases and takes an array X as input. For each layer "L", it effectively computes its output $A_L$:
 
-$$Z_L = input_L \times W_L + b_L$$
-$$A_L = \sigma_L (Z_L)$$
+$$Z^L = input^L \times W^L + b^L$$
+$$A^L = \sigma^L (Z^L)$$
 
-Where, $\sigma_L$ is the layer's activation function, $input_L \in \mathbb{R}^{1 \times m_{L-1}}$ is the output of the previous layer $A_{L-1}$ or the input of the model $X$ if it is the first layer, $W_L \in \mathbb{R}^{m_{L-1} \times m_{L}}$ is the weights matrix, and $b_L \in \mathbb{R}^{1 \times m_{L}}$ the bias vector.
+Where, $\sigma^L$ is the layer's activation function, $input^L \in \mathbb{R}^{1 \times m_{L-1}}$ is the output of the previous layer $A^{L-1}$ or the input of the model $X$ if it is the first layer, $W^L \in \mathbb{R}^{m_{L-1} \times m_{L}}$ is the weights matrix, and $b^L \in \mathbb{R}^{1 \times m_{L}}$ the bias vector.
 
 *NB: In the case of multiple observations, we just modify the 1 in the previous expression by N, the number of observations.*
 
 ## 3- Backward Propagation
-In order to optimize the weight matrices and bias vectors of the model, it is essential to compute the partial derivatives of a loss function with respect to each of these parameters. The loss function, in this context, is the function that computes the difference between the network output, obtained using a forward pass, and the expected output. The selection of a loss function in the model is done during the building phase, the argument `loss` is used with the `build()` method on the `NeuralNetwork` object. The available loss functions are those present in the file. #TODO.
+In order to optimize the weight matrices and bias vectors of the model, it is essential to compute the partial derivatives of a loss function with respect to each of these parameters. The loss function, in this context, is the function that computes the difference between the network output, obtained using a forward pass, and the expected output. The selection of a loss function in the model is done during the building phase, the argument `loss` is used with the `build()` method on the `NeuralNetwork` object. The available loss functions are those present in the file [loss.py](core/utilities/loss.py).
 
-The partial derivatives are computed using the Backward Propagation algorithm, an efficient method that avoids redundant calculations by going through the network backwards (as its name states). Indeed, the chain rule shows that, when traversing a branch of the network, several intermediate terms in the derivative expressions are repeated, meaning they can be stored and used by going backwards in the network.
+The partial derivatives are computed using the Backward Propagation algorithm, an efficient method that avoids redundant calculations by going through the network backwards (as its name states). Indeed, the chain rule shows that, when traversing a branch of the network, several intermediate terms in the derivative expressions are repeated, meaning they can be stored and reused during the backward pass.
+
+*Example:* <br>
+For a neural network with a single two-neurons hidden layer and one output, the output could be written using the expression:
+
+$$Prediction = A^1_{1, 1} \times  W^1_{1, 1} + A^1_{1, 2} \times  W^1_{2, 1} + b^1$$
+
+Where, $A^1 \in \mathbb{R}^{1 \times 2}$ is the output of the hidden layer (or the input of the output layer), $W^1 \in \mathbb{R}^{2 \times 1}$ the weight matrix and $b^1 \in \mathbb{R}$ the bias of the output layer.
+
+The Mean Squared Error (MSE) loss, in the case of a one observation input, is written as:
+
+$$MSE = \frac{1}{2} \times (Observation - Prediction)^2$$
+
+Using these expressions and the chain rule, the gradients of the loss function with respect to $W^1_{2, 1}$ and $b^1$ are:
+
+$$\frac{\partial MSE}{\partial W^1_{2, 1}} = \frac{\partial MSE}{\partial Prediction} \times \frac{\partial Prediction}{\partial W^1_{2, 1}} = - (Observation - Prediction) \times A^1_{1, 2}$$
+
+$$\frac{\partial MSE}{\partial b^1} = \frac{\partial MSE}{\partial Prediction} \times \frac{\partial Prediction}{\partial b^1} = - (Observation - Prediction) \times 1$$
+
+And using the chain rule, the term $\frac{\partial MSE}{\partial Prediction}$, for example, appears for all the other differentials.
+
+For a more general case, the `backward()` method contains the whole gradient computation logic.
+
+```python
+def backward(self,
+            X: NDArray,
+            y: NDArray,
+            learning_rate: float) -> None:
+    N_obs = X.shape[0]
+    gradient_weights = [np.zeros(weight.shape) for weight in self.weights]
+    gradient_biases = [np.zeros(bias.shape) for bias in self.biases]
+    inputs, outputs = self.forward(X)
+    derivative_error = self.d_loss(y, outputs[-1]) * self._layers[-1].d_activate(inputs[-1])   # Dimension (input_dim * n_neurons of Output Layer)
+    gradient_biases[-1] = derivative_error.sum(axis=0)  # Dimension (1 * n_neurons of Output Layer)
+    gradient_weights[-1] = np.dot(derivative_error.T, outputs[-2]).T / N_obs
+
+    for step in range(len(self._layers) - 2, -1, -1):
+        derivative_error = np.dot(derivative_error, self.weights[step + 1].T) * self._layers[step].d_activate(inputs[step + 1])
+        gradient_biases[step] = derivative_error.sum(axis=0)
+        gradient_weights[step] = np.dot(derivative_error.T, outputs[step]).T / N_obs
+```
+
+
 
 ## 4- Optimization
 The original reason for computing the partial derivatives of the loss function is to be able to minimize it. Minimizing the loss function is equivalent to closing the gap between the model output and the expected output. In this regard, different optimization algorithms could be used. The one implemented so far in the model is the Gradient Descent algorithm, it is used automatically after calling the `fit()` method on the `NeuralNetwork` object.
 
 The Gradient Descent algorithm consists in moving the parameter in the opposite direction of the gradient of the loss function. This move lets the parameters approach a set that minimizes the loss function, until a stop condition is met.Gradient Descent is a first-order optimization algorithm.
 
-$$W_L = W_L - \eta \times \frac{\partial loss}{\partial W_L}$$
-$$b_L = b_L - \eta \times \frac{\partial loss}{\partial b_L}$$
+$$W^L = W^L - \eta \times \frac{\partial loss}{\partial W^L}$$
+$$b^L = b^L - \eta \times \frac{\partial loss}{\partial b^L}$$
 
-Where, $W_L \in \mathbb{R}^{m_{L-1} \times m_{L}}$ is still the weights matrix, $b_L \in \mathbb{R}^{1 \times m_{L}}$ the bias vector, and $\eta \in \mathbb{R}$ is the learning rate for the optimization.
+Where, $W^L \in \mathbb{R}^{m_{L-1} \times m_{L}}$ is still the weights matrix, $b^L \in \mathbb{R}^{1 \times m_{L}}$ the bias vector, and $\eta \in \mathbb{R}$ is the learning rate for the optimization.
 
 In the `backward()` method, the [NeuralNetwork](core/network/network.py) updates its weights after one full backward pass using the Gradient Descent algorithm.
 
-```
+```python
 for step in range(len(self._layers)):
     self.weights[step] -= learning_rate * gradient_weights[step]
     self.biases[step] -= learning_rate * gradient_biases[step]
@@ -95,7 +141,7 @@ The first example is a sanity check for a simple linear regression with a single
 
 $y = a \times x + b$
 
-```
+```python
 network = NeuralNetwork(input_dim=X.shape[1])
 network.add_layer(Layer(n_neurons=1, activation="identity"))
 network.build(loss="MSE")
@@ -117,7 +163,7 @@ $y = a_1 \times x_1 + a_2 \times x_2 + b$
 
 This time, the model converges within 150 epochs and gives the correct results.
 
-```
+```python
 Weights = [[1.9912418 ]
  [2.99404012]]
  
@@ -127,7 +173,7 @@ Bias = [[0.99949735]]
 ### c- Approximating the Sine Function
 The third problem is the approximation of the sine function. For this case, a neural network with two hidden layers using a sigmoid activation function is used. The reason behind the activation function is that it is a smooth function, and a weighted sum of sigmoid functions can relatively easily approximate any complex nonlinear functions, such as a sine function. A relatively large network is used to clearly illustrate the convergence.
 
-```
+```python
 network = NeuralNetwork(input_dim=X.shape[1])
 network.add_layer(Layer(n_neurons=256, activation="sigmoid"))
 network.add_layer(Layer(n_neurons=256, activation="sigmoid"))
@@ -155,4 +201,4 @@ The model, does in fact find the correct decision boundary after around 10,000 e
 
 ![Example 4](./assets/plots/example4_xor_boundary.png)
 
-## 7- References
+## 7- Limitations and Future Work
