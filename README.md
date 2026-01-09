@@ -202,3 +202,8 @@ The model, does in fact find the correct decision boundary after around 10,000 e
 ![Example 4](./assets/plots/example4_xor_boundary.png)
 
 ## 7- Limitations and Future Work
+The current implementation of the neural network remains limited compared to mature deep learning frameworks such as TensorFlow or PyTorch.
+
+Several important features commonly found in standard multilayer perceptron (MLP) implementations are not yet available. These include more advanced optimization algorithms such as Adam, RMSProp, and Momentum, as well as training callbacks to adapt the learning rate dynamically during training. In addition, regularization techniques such as dropout and L1/L2 regularization, which are essential for improving generalization and preventing overfitting, have not been implemented yet. The range of available activation functions and loss functions is also currently limited.
+
+Hence, this implementation is still a work in progress, and frequent updates will be added.
