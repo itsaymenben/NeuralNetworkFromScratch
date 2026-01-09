@@ -49,12 +49,37 @@ Where, $\sigma_L$ is the layer's activation function, $input_L \in \mathbb{R}^{1
 *NB: In the case of multiple observations, we just modify the 1 in the previous expression by N, the number of observations.*
 
 ## 3- Backward Propagation
+In order to optimize the weight matrices and bias vectors of the model, it is essential to compute the partial derivatives of a loss function with respect to each of these parameters. The loss function, in this context, is the function that computes the difference between the network output, obtained using a forward pass, and the expected output. The selection of a loss function in the model is done during the building phase, the argument `loss` is used with the `build()` method on the `NeuralNetwork` object. The available loss functions are those present in the file. #TODO.
+
+The partial derivatives are computed using the Backward Propagation algorithm, an efficient method that avoids redundant calculations by going through the network backwards (as its name states). Indeed, the chain rule shows that, when traversing a branch of the network, several intermediate terms in the derivative expressions are repeated, meaning they can be stored and used by going backwards in the network.
 
 ## 4- Optimization
+The original reason for computing the partial derivatives of the loss function is to be able to minimize it. Minimizing the loss function is equivalent to closing the gap between the model output and the expected output. In this regard, different optimization algorithms could be used. The one implemented so far in the model is the Gradient Descent algorithm, it is used automatically after calling the `fit()` method on the `NeuralNetwork` object.
+
+The Gradient Descent algorithm consists in moving the parameter in the opposite direction of the gradient of the loss function. This move lets the parameters approach a set that minimizes the loss function, until a stop condition is met.Gradient Descent is a first-order optimization algorithm.
+
+$$W_L = W_L - \eta \times \frac{\partial loss}{\partial W_L}$$
+$$b_L = b_L - \eta \times \frac{\partial loss}{\partial b_L}$$
+
+Where, $W_L \in \mathbb{R}^{m_{L-1} \times m_{L}}$ is still the weights matrix, $b_L \in \mathbb{R}^{1 \times m_{L}}$ the bias vector, and $\eta \in \mathbb{R}$ is the learning rate for the optimization.
+
+In the `backward()` method, the [NeuralNetwork](core/network/network.py) updates its weights after one full backward pass using the Gradient Descent algorithm.
+
+```
+for step in range(len(self._layers)):
+    self.weights[step] -= learning_rate * gradient_weights[step]
+    self.biases[step] -= learning_rate * gradient_biases[step]
+```
+
+The `learning_rate` is taken as a parameter by the `fit()` method.
+
+*NB: The only stop condition implemented so far is the number of `epochs`, which is the number of backward passes on the network. It is also a parameter in the `fit()` method.*
 
 ## 5- Batching
-Batching is a technique where the input data is separated into chunks of fixed size and fed separately to the model. The smaller data size helps the model learn faster and the variety of the batches makes the model more accurate and generalize better, thanks to the noisier gradients that help the optimization algorithm explore the loss surface better.<br>
-Selecting a batch size in the model involves adding it as a model (`batch_size`) parameter during the fitting, it defaults to -1 which takes the whole dataset as a chunk.<br>
+Batching is a technique where the input data is separated into chunks of fixed size and fed separately to the model. The smaller data size helps the model learn faster and the variety of the batches makes the model more accurate and generalize better, thanks to the noisier gradients that help the optimization algorithm explore the loss surface better.
+
+Selecting a batch size in the model involves adding it as a model (`batch_size`) parameter during the fitting, it defaults to -1 which takes the whole dataset as a chunk.
+
 Depending on the chosen batch size, different optimization regimes are obtained:
 - If `batch_size` is equal to the number of observations, the model uses **Gradient Descent**.
 - If `batch_size` is between 1 and the number of observations, the model uses **Mini-batch Gradient Descent**.
